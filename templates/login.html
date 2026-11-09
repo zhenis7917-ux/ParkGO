@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>ParkGo - Login</title>
+<style>
+:root{--g:#17964a;--gd:#0f7a3a;--gl:#e3f4e8;--ink:#16211b;--mut:#6e7b73;--bg:#f4f8f5;--ln:#e1e8e3;--rd:#dc4b4b;--am:#e8a62a;--f:"Inter","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;min-height:100dvh;background:var(--bg);font-family:var(--f);color:var(--ink);-webkit-font-smoothing:antialiased}
+button,input{font:inherit}
+#app{
+  width:100%;
+  min-height:100dvh;
+  background:var(--bg);
+  padding:calc(24px + env(safe-area-inset-top)) 20px 36px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+.box{
+  width:100%;
+  max-width:460px;
+  margin:0 auto;
+}
+.top{display:flex;justify-content:space-between;align-items:center}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:24px;text-decoration:none;color:var(--ink)}
+.mark{width:44px;height:44px;border-radius:14px;background:var(--g);color:#fff;display:grid;place-items:center;font-size:24px;overflow:hidden;padding:0}
+.mark img{display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.lang{display:flex;background:#fff;border-radius:999px;padding:3px;box-shadow:0 4px 14px rgba(0,0,0,.06);border:1px solid var(--ln)}
+.lang button{border:0;background:none;padding:7px 12px;border-radius:999px;font-size:12px;font-weight:800;color:var(--mut);cursor:pointer}
+.lang button.on{background:var(--g);color:#fff}
+h1{font-weight:700;font-size:30px;margin:28px 0 6px;letter-spacing:-.02em}
+.sub{color:var(--mut);margin:0 0 22px;font-size:15px}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:#fff;border-radius:16px;padding:4px;margin-bottom:18px;border:1px solid var(--ln)}
+.seg button{border:0;background:none;padding:13px;border-radius:12px;font-weight:700;color:var(--mut);cursor:pointer;transition:all .15s}
+.seg button.on{background:var(--ink);color:#fff}
+label{display:block;font-size:13px;font-weight:600;color:var(--mut);margin:14px 0 6px}
+input{width:100%;height:56px;border-radius:16px;border:1px solid var(--ln);padding:0 16px;font-size:16px;background:#fff;color:var(--ink)}
+input:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid var(--am);outline-offset:2px}
+.cta{width:100%;height:56px;border:0;border-radius:18px;background:var(--g);color:#fff;font-weight:800;font-size:15px;text-transform:uppercase;margin-top:22px;cursor:pointer;box-shadow:0 8px 20px rgba(23,150,74,.28);transition:background .15s}
+.cta:hover{background:var(--gd)}
+.err{background:#fbe2e2;color:var(--rd);border-radius:14px;padding:12px 14px;font-weight:600;font-size:14px;margin-bottom:6px}
+.note{font-size:13px;color:var(--mut);margin-top:16px;line-height:1.45}
+a{color:var(--g);font-weight:700;text-decoration:none}
+a:hover{text-decoration:underline}
+form{display:none}form.on{display:block}
+
+@media (min-width: 768px) {
+  .box{
+    background:#fff;
+    padding:36px 40px;
+    border-radius:28px;
+    box-shadow:0 16px 48px rgba(22,33,27,.08);
+    border:1px solid var(--ln);
+  }
+  .seg{background:var(--bg)}
+  input{background:var(--bg)}
+  input:focus{background:#fff}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="box">
+    <div class="top"><a href="/" class="brand"><span class="mark"><img src="/static/images/parkgo-logo.jpg" alt=""></span>ParkGo</a><div class="lang" id="lang"></div></div>
+    <h1 id="h"></h1><p class="sub" id="s"></p>
+    <div class="seg"><button type="button" data-m="login" id="b1"></button><button type="button" data-m="register" id="b2"></button></div>
+    {% if error %}<div class="err">{{ error }}</div>{% endif %}
+
+    <form method="post" action="/login" id="f-login" class="{{ 'on' if mode != 'register' else '' }}">
+      <input type="hidden" name="next" value="{{ next }}">
+      <label for="e1" data-t="email"></label><input id="e1" name="email" type="email" required autocomplete="email">
+      <label for="p1" data-t="pass"></label><input id="p1" name="password" type="password" required autocomplete="current-password">
+      <button class="cta" data-t="signin"></button>
+    </form>
+
+    <form method="post" action="/register" id="f-register" class="{{ 'on' if mode == 'register' else '' }}">
+      <input type="hidden" name="next" value="{{ next }}">
+      <label for="n2" data-t="name"></label><input id="n2" name="full_name" maxlength="80" autocomplete="name">
+      <label for="e2" data-t="email"></label><input id="e2" name="email" type="email" required autocomplete="email" placeholder="name@astanait.edu.kz">
+      <label for="p2" data-t="pass8"></label><input id="p2" name="password" type="password" required minlength="8" autocomplete="new-password">
+      <button class="cta" data-t="signup"></button>
+    </form>
+    <p class="note" data-t="hash"></p>
+    <p class="note"><a href="/" data-t="back"></a></p>
+  </div>
+</div>
+<script>
+const T={ru:{h:"Вход в ParkGo",s:"Войдите, чтобы бронировать места",b1:"Вход",b2:"Регистрация",email:"Университетская почта",pass:"Пароль",pass8:"Пароль (минимум 8 символов)",name:"Имя",signin:"Войти",signup:"Создать аккаунт",hash:"Пароли хранятся только в виде хеша, мы не видим ваш пароль.",back:"← Вернуться на карту"},
+en:{h:"Log in to ParkGo",s:"Log in to book parking spots",b1:"Log in",b2:"Register",email:"University email",pass:"Password",pass8:"Password (at least 8 characters)",name:"Name",signin:"Log in",signup:"Create account",hash:"Passwords are stored only as a hash. We never see your password.",back:"← Back to map"}};
+let lang=localStorage.getItem("pg-lang")||"ru";
+const $=s=>document.querySelector(s);
+function render(){document.documentElement.lang=lang;
+ for(const k of ["h","s","b1","b2"])$("#"+k).textContent=T[lang][k];
+ document.querySelectorAll("[data-t]").forEach(e=>e.textContent=T[lang][e.dataset.t]);
+ $("#lang").innerHTML=["ru","en"].map(x=>`<button class="${x==lang?"on":""}" data-l="${x}">${x.toUpperCase()}</button>`).join("");
+ const m=$("#f-register").classList.contains("on")?"register":"login";
+ $("#b1").classList.toggle("on",m=="login");$("#b2").classList.toggle("on",m=="register")}
+document.addEventListener("click",e=>{
+ const l=e.target.closest("[data-l]");if(l){lang=l.dataset.l;localStorage.setItem("pg-lang",lang);render()}
+ const m=e.target.closest("[data-m]");if(m){$("#f-login").classList.toggle("on",m.dataset.m=="login");$("#f-register").classList.toggle("on",m.dataset.m=="register");render()}});
+render();
+</script>
+</body>
+</html>

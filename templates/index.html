@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>ParkGo</title>
+<style>
+:root{
+  --g:#17964a;
+  --gd:#0f7a3a;
+  --gl:#e3f4e8;
+  --ink:#16211b;
+  --mut:#6e7b73;
+  --bg:#f4f8f5;
+  --ln:#e1e8e3;
+  --am:#e8a62a;
+  --rd:#dc4b4b;
+  --f:"Inter","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+  background:var(--bg);
+  font-family:var(--f);
+  color:var(--ink);
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit;padding:0}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--am);outline-offset:2px}
+
+/* Full-screen container on both Phone and PC */
+#app{
+  position:relative;
+  width:100vw;
+  height:100dvh;
+  background:var(--bg);
+  overflow:hidden;
+}
+
+.scr{position:absolute;inset:0;display:none;flex-direction:column;background:var(--bg)}
+.scr.on{display:flex}
+#home.scr{background:transparent}
+
+.card{background:#fff;border-radius:22px;box-shadow:0 8px 28px rgba(22,33,27,.10)}
+.cta{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;height:56px;border-radius:18px;
+  background:var(--g);color:#fff;font-weight:800;font-size:15px;
+  text-transform:uppercase;letter-spacing:.02em;
+  box-shadow:0 8px 20px rgba(23,150,74,.28);
+  transition:transform .15s,background .15s;
+}
+.cta:hover{background:var(--gd)}
+.cta:active{transform:scale(.99)}
+.cta.dark{background:var(--ink);box-shadow:none}
+.cta.dark:hover{background:#24352c}
+.cta:disabled{opacity:.55;pointer-events:none}
+
+.lang{display:flex;background:#fff;border-radius:999px;padding:3px;box-shadow:0 4px 14px rgba(0,0,0,.08);border:1px solid var(--ln)}
+.lang button{padding:7px 12px;border-radius:999px;font-size:12px;font-weight:800;color:var(--mut);transition:all .15s}
+.lang button.on{background:var(--g);color:#fff}
+
+/* Map canvas */
+.map{
+  position:absolute;
+  inset:0;
+  bottom:calc(66px + env(safe-area-inset-bottom));
+  background:#eef3ee;
+  background-image:linear-gradient(#dfe7e0 1px,transparent 1px),linear-gradient(90deg,#dfe7e0 1px,transparent 1px);
+  background-size:44px 44px;
+  overflow:hidden;
+}
+.road{position:absolute;background:#fff;box-shadow:0 0 0 6px #fff8}
+.road.y{background:#fdf0c8;box-shadow:0 0 0 2px #f2dc98}
+.park{position:absolute;border-radius:50%;background:#cfe8b8;box-shadow:inset 0 0 0 14px #d9eec6}
+.mlabel{position:absolute;font-size:12px;font-weight:700;color:#5b6a60}
+.pin{
+  position:absolute;transform:translate(-50%,-50%);
+  height:42px;padding:0 14px;border-radius:21px 21px 21px 6px;
+  color:#fff;font-weight:800;font-size:18px;
+  box-shadow:0 0 0 3px #fff,0 6px 16px rgba(0,0,0,.22);
+  display:flex;align-items:center;gap:5px;
+  transition:transform .15s;
+}
+.pin:hover{transform:translate(-50%,-50%) scale(1.06)}
+.pin small{font-size:12px;opacity:.8}
+.pin.ok{background:var(--g)}.pin.mid{background:var(--am)}.pin.no{background:var(--rd)}
+.pin.sel{outline:3px solid var(--ink);outline-offset:3px;z-index:2}
+.me{position:absolute;left:50%;top:82%;width:16px;height:16px;border-radius:50%;background:#2f6bff;box-shadow:0 0 0 5px #fff,0 0 0 14px rgba(47,107,255,.2)}
+
+/* Map Zoom Controls */
+.mctrl{
+  position:absolute;
+  right:14px;
+  top:50%;
+  transform:translateY(-50%);
+  z-index:3;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.mctrl button{
+  width:44px;height:44px;border-radius:14px;
+  background:rgba(255,255,255,.95);
+  backdrop-filter:blur(8px);
+  box-shadow:0 4px 16px rgba(22,33,27,.12);
+  border:1px solid var(--ln);
+  font-size:22px;font-weight:700;color:var(--ink);
+  display:grid;place-items:center;
+  transition:background .15s,transform .1s;
+}
+.mctrl button:hover{background:#fff}
+.mctrl button:active{transform:scale(.95)}
+
+/* Top Floating Controls */
+.top{
+  position:relative;
+  z-index:3;
+  padding:calc(12px + env(safe-area-inset-top)) 14px 0;
+  pointer-events:none;
+}
+.top > *{pointer-events:auto}
+.brandrow{
+  display:flex;justify-content:space-between;align-items:center;
+  background:rgba(255,255,255,.92);
+  backdrop-filter:blur(12px);
+  padding:8px 12px;
+  border-radius:20px;
+  box-shadow:0 6px 20px rgba(22,33,27,.08);
+  border:1px solid rgba(225,232,227,.8);
+}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:22px;letter-spacing:-.02em}
+.mark{width:42px;height:42px;border-radius:13px;background:var(--g);color:#fff;display:grid;place-items:center;font-weight:800;font-size:22px;overflow:hidden;padding:0;flex:none}
+.mark img,.pbox img{display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.ui-icon{display:block;flex:none;width:22px;height:22px;object-fit:contain}
+.adm{width:42px;height:42px;border-radius:13px;background:var(--ink);display:grid;place-items:center;text-decoration:none;font-size:19px;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+
+.search{
+  margin-top:10px;height:52px;border-radius:18px;
+  background:rgba(255,255,255,.96);
+  backdrop-filter:blur(12px);
+  box-shadow:0 6px 20px rgba(22,33,27,.09);
+  border:1px solid rgba(225,232,227,.9);
+  display:flex;align-items:center;gap:10px;padding:0 16px;color:var(--mut);
+}
+.search input{flex:1;border:0;outline:0;font:inherit;font-size:16px;background:none;color:var(--ink);min-width:0}
+
+.chips{
+  display:flex;gap:8px;overflow-x:auto;padding:10px 2px 4px;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;
+}
+.chips::-webkit-scrollbar{display:none}
+.chip{
+  flex:none;padding:9px 15px;border-radius:999px;
+  background:rgba(255,255,255,.95);
+  backdrop-filter:blur(8px);
+  border:1px solid var(--ln);
+  font-weight:600;font-size:14px;
+  box-shadow:0 4px 12px rgba(22,33,27,.06);
+  transition:all .15s;
+}
+.chip:hover{border-color:var(--g)}
+.chip.on{background:var(--g);color:#fff;border-color:var(--g);box-shadow:0 6px 16px rgba(23,150,74,.28)}
+
+/* Bottom Preview Card */
+.peek{
+  position:absolute;z-index:3;
+  left:14px;right:14px;
+  bottom:calc(82px + env(safe-area-inset-bottom));
+  display:flex;align-items:center;gap:14px;padding:14px 16px;
+  text-align:left;
+  border:1px solid var(--ln);
+  transition:transform .15s,box-shadow .15s;
+}
+.peek:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(22,33,27,.15)}
+.pbox{flex:none;width:46px;height:46px;border-radius:14px;background:var(--g);color:#fff;display:grid;place-items:center;font-weight:800;font-size:22px;overflow:hidden;padding:0}
+.peek b{display:block;font-size:17px;margin-bottom:2px}
+.peek span{font-size:13px;color:var(--mut)}
+.free{color:var(--g)!important;font-weight:700}
+
+/* Navigation Bar */
+.nav{
+  position:absolute;z-index:4;left:0;right:0;bottom:0;
+  display:flex;background:#fff;
+  padding:12px 0 calc(14px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--ln);
+}
+.nav button{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  gap:8px;font-weight:700;font-size:15px;color:var(--mut);
+  padding:6px 12px;border-radius:14px;transition:color .15s,background .15s;
+}
+.nav button.on{color:var(--g)}
+
+/* Parking Details Sheet / Modal */
+.shade{
+  position:absolute;inset:0;z-index:5;
+  background:rgba(22,33,27,.42);
+  backdrop-filter:blur(2px);
+  display:none;
+}
+.shade.on{display:block}
+.sheet{
+  position:absolute;z-index:6;left:0;right:0;bottom:0;
+  background:#fff;border-radius:28px 28px 0 0;
+  padding:12px 20px calc(24px + env(safe-area-inset-bottom));
+  transform:translateY(105%);
+  transition:transform .25s cubic-bezier(.2,.8,.2,1),opacity .2s;
+  box-shadow:0 -10px 40px rgba(22,33,27,.18);
+}
+.sheet.on{transform:none}
+.grab{width:44px;height:5px;border-radius:3px;background:#d5dcd7;margin:0 auto 16px}
+.sheet h2{margin:2px 0 0;font-size:28px;font-weight:700;letter-spacing:-.02em}
+.shead{display:flex;justify-content:space-between;align-items:start;gap:12px}
+.sub{color:var(--g);font-weight:800;font-size:12px;letter-spacing:.06em}
+.pill{display:inline-flex;align-items:center;gap:6px;background:var(--gl);color:var(--gd);font-weight:800;font-size:14px;padding:9px 14px;border-radius:999px;margin:14px 8px 14px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.tile{background:var(--bg);border-radius:16px;padding:14px}
+.tile span{display:block;font-size:12px;color:var(--mut);margin-bottom:4px}
+.tile b{font-size:18px}
+.two{display:flex;gap:12px}
+
+/* Secondary Screens (Book, FAQ, Ticket, Support, Done) */
+.bar{
+  display:flex;align-items:center;gap:12px;
+  padding:calc(12px + env(safe-area-inset-top)) 16px 12px;
+  background:#fff;border-bottom:1px solid var(--ln);
+}
+.back{width:44px;height:44px;border-radius:14px;background:var(--bg);font-size:26px;display:grid;place-items:center}
+.bar h3{flex:1;text-align:center;margin:0;font-weight:700;font-size:18px}
+.body{
+  flex:1;overflow-y:auto;padding:20px 16px;
+  width:100%;max-width:680px;margin:0 auto;
+}
+.body h4{margin:20px 0 10px;font-size:16px;font-weight:700}
+.opts{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.opt{height:56px;border-radius:16px;background:#fff;border:2px solid var(--ln);font-weight:700;color:var(--mut);transition:all .15s}
+.opt.on{background:var(--gl);border-color:var(--g);color:var(--gd)}
+.plate{display:flex;height:58px;border-radius:16px;border:1px solid var(--ln);background:#fff;overflow:hidden}
+.plate i{display:grid;place-items:center;width:62px;background:var(--bg);font-style:normal;font-weight:800;border-right:1px solid var(--ln)}
+input.f{flex:1;min-width:0;border:0;outline:0;padding:0 16px;font:inherit;font-size:18px;font-weight:700;letter-spacing:.06em;background:#fff;text-transform:uppercase}
+input.n{width:100%;height:58px;border-radius:16px;border:1px solid var(--ln);padding:0 16px;font:inherit;font-size:17px;background:#fff}
+.rows{background:#fff;border-radius:18px;padding:4px 18px;margin-top:20px;border:1px solid var(--ln)}
+.rows div{display:flex;justify-content:space-between;padding:15px 0;border-bottom:1px solid var(--ln);color:var(--mut)}
+.rows div:last-child{border:0}.rows b{color:var(--ink)}
+.note{background:#e9f1ec;color:var(--mut);border-radius:14px;padding:14px;font-size:13px;margin-top:16px;line-height:1.45}
+.err{color:var(--rd);font-weight:700;margin:12px 2px 0;min-height:20px;font-size:14px}
+.err.okmsg{color:var(--g)}
+.foot{
+  padding:12px 16px calc(16px + env(safe-area-inset-bottom));
+  width:100%;max-width:680px;margin:0 auto;
+}
+
+/* Done / Ticket Screen */
+.done{
+  align-items:center;text-align:center;
+  padding:calc(36px + env(safe-area-inset-top)) 20px 32px;
+  overflow-y:auto;
+}
+.done-inner{width:100%;max-width:520px;margin:0 auto;display:flex;flex-direction:column;align-items:center}
+.ok{width:96px;height:96px;border-radius:50%;background:var(--g);display:grid;place-items:center;box-shadow:0 12px 30px rgba(23,150,74,.33)}
+.done h1{font-weight:700;font-size:30px;margin:6px 0 4px}
+.ticket{width:100%;text-align:left;padding:22px;margin-top:20px;border:1px solid var(--ln)}
+.ticket small{color:var(--mut);font-size:14px}.ticket h2{margin:4px 0 0;font-size:26px}
+.until{display:flex;justify-content:space-between;align-items:center;background:var(--gl);border-radius:16px;padding:16px 18px;margin:16px 0;color:var(--mut);font-size:14px}
+.until b{font-size:24px;color:var(--gd)}
+.qr{display:grid;grid-template-columns:repeat(9,1fr);gap:4px;width:168px;margin:6px auto;padding:14px;border:1px solid var(--ln);border-radius:16px}
+.qr i{aspect-ratio:1;border-radius:2px;background:transparent}.qr i.k{background:var(--ink)}
+.timer{width:100%;margin:16px 0;padding:16px;border-radius:16px;background:var(--gl);color:var(--gd);font-weight:600;font-size:14px}
+.cancel{color:var(--rd);font-weight:800;padding:16px;margin-top:4px}
+
+/* Support Screen */
+.shead2{
+  background:var(--ink);color:#fff;text-align:center;
+  padding:calc(40px + env(safe-area-inset-top)) 20px 26px;
+  position:relative;
+}
+.shead2 h1{font-weight:700;font-size:28px;margin:12px 0 6px}.shead2 p{margin:0;color:#aab6af;font-size:14px}
+.sicon{display:inline-grid;place-items:center;width:68px;height:68px;border-radius:20px;background:#fff;font-size:30px}
+.sicon img{width:44px;height:44px;object-fit:contain}
+.list{padding:0;margin:0;list-style:none;overflow:hidden;border:1px solid var(--ln)}
+.list li{border-bottom:1px solid var(--ln);padding:0}
+.list li:last-child{border:0}
+.list b{display:block;margin-bottom:2px}.list span{font-size:13px;color:var(--mut)}
+.li{display:flex;width:100%;justify-content:space-between;align-items:center;padding:18px 20px;text-align:left;font-size:20px;color:var(--mut);transition:background .15s}
+.li:hover{background:var(--bg)}
+.li div{font-size:16px;color:var(--ink)}
+.contact{
+  display:flex;justify-content:space-between;align-items:center;
+  background:var(--gl);border-radius:22px;padding:20px;margin-top:16px;
+  border:1px solid rgba(23,150,74,.2);font:inherit;cursor:pointer;
+}
+.on-badge{background:var(--g);color:#fff;font-size:12px;font-weight:800;padding:6px 12px;border-radius:999px}
+.qa{margin-bottom:12px;padding:0;border:1px solid var(--ln)}
+.qa summary{padding:18px;font-weight:700;cursor:pointer}
+.qa p{margin:0;padding:0 18px 18px;color:var(--mut);font-size:14px;line-height:1.55}
+.ta{width:100%;min-height:150px;border:1px solid var(--ln);border-radius:16px;padding:14px;font:inherit;font-size:16px;resize:vertical;background:#fff;color:var(--ink)}
+
+/* ==========================================================================
+   PC / Tablet Full-Screen Responsive Layout (>= 768px)
+   ========================================================================== */
+@media (min-width: 768px) {
+  .map{
+    bottom:0; /* Map occupies 100% of screen height on PC */
+  }
+  .top{
+    padding:20px 24px 0;
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    gap:12px;
+    max-width:460px;
+  }
+  .brandrow{
+    width:100%;
+    padding:10px 14px;
+    border-radius:22px;
+  }
+  .search{
+    margin-top:0;
+    width:100%;
+    height:54px;
+  }
+  .chips{
+    width:calc(100vw - 48px);
+    max-width:1100px;
+    flex-wrap:wrap;
+    padding:2px 0;
+    gap:8px;
+  }
+  .mctrl{
+    right:24px;
+    top:auto;
+    bottom:100px;
+    transform:none;
+  }
+  .peek{
+    left:24px;
+    right:auto;
+    width:412px;
+    bottom:24px;
+    padding:16px 18px;
+    border-radius:24px;
+  }
+  /* Floating Navigation Pill on PC */
+  #home > .nav{
+    left:auto;
+    right:24px;
+    bottom:24px;
+    width:auto;
+    min-width:300px;
+    border-radius:999px;
+    padding:6px;
+    border:1px solid var(--ln);
+    box-shadow:0 10px 30px rgba(22,33,27,.14);
+    background:rgba(255,255,255,.96);
+    backdrop-filter:blur(12px);
+  }
+  #home > .nav button{
+    padding:10px 22px;
+    border-radius:999px;
+  }
+  #home > .nav button.on{
+    background:var(--gl);
+    color:var(--gd);
+  }
+  #support > .nav{
+    max-width:420px;
+    margin:0 auto 24px;
+    border-radius:999px;
+    padding:6px;
+    border:1px solid var(--ln);
+    box-shadow:0 8px 24px rgba(22,33,27,.08);
+  }
+  #support > .nav button{
+    padding:10px 22px;
+    border-radius:999px;
+  }
+  #support > .nav button.on{
+    background:var(--gl);
+    color:var(--gd);
+  }
+  /* Centered Modal Dialog for Parking Sheet on PC */
+  .sheet{
+    left:50%;
+    right:auto;
+    bottom:auto;
+    top:50%;
+    width:min(480px, 92vw);
+    border-radius:28px;
+    padding:28px;
+    transform:translate(-50%, -44%) scale(.96);
+    opacity:0;
+    pointer-events:none;
+    box-shadow:0 24px 60px rgba(22,33,27,.25);
+  }
+  .sheet.on{
+    transform:translate(-50%, -50%) scale(1);
+    opacity:1;
+    pointer-events:auto;
+  }
+  .grab{display:none}
+  .opts{grid-template-columns:repeat(4,1fr)}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- MAP -->
+<section class="scr on" id="home">
+  <div class="map" id="map">
+    <div class="road y" style="left:-10%;right:-10%;top:30%;height:46px;transform:rotate(-2deg)"></div>
+    <div class="road" style="left:-20%;right:-20%;top:56%;height:60px;transform:rotate(-24deg)"></div>
+    <div class="road" style="left:70%;top:-5%;bottom:60%;width:30px"></div>
+    <div class="park" style="left:12%;top:44%;width:62%;height:26%"></div>
+    <div class="mlabel" style="left:8%;top:22%">Campus</div>
+    <div class="me"></div>
+  </div>
+  <div class="top">
+    <div class="brandrow">
+      <div class="brand"><span class="mark"><img src="/static/images/parkgo-logo.jpg" alt="logotype"></span>ParkGo</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <a class="adm" href="/admin" aria-label="System overview" title="System overview">📊</a>
+        <div class="lang"></div>
+      </div>
+    </div>
+    <label class="search"><img class="ui-icon" src="/static/images/search.png" alt="search"><input id="q" data-ph="search" autocomplete="off"></label>
+    <div class="chips" id="chips"></div>
+  </div>
+  <div class="mctrl">
+    <button type="button" id="zin" aria-label="Zoom in" title="Zoom in">+</button>
+    <button type="button" id="zout" aria-label="Zoom out" title="Zoom out">−</button>
+    <button type="button" id="zloc" aria-label="Center map" title="Center map">⌖</button>
+  </div>
+  <button class="peek card" id="peek"></button>
+  <nav class="nav">
+    <button class="on" data-go="home"><img class="ui-icon" src="/static/images/home.png" alt="home"><span data-t="map"></span></button>
+    <button data-go="support"><img class="ui-icon" src="/static/images/support.png" alt="support"><span data-t="support"></span></button>
+  </nav>
+  <div class="shade" id="shade"></div>
+  <div class="sheet" id="sheet"></div>
+</section>
+
+<!-- BOOK -->
+<section class="scr" id="book">
+  <div class="bar"><button class="back" id="bback" aria-label="Back">‹</button><h3 data-t="bookTitle"></h3><div class="lang"></div></div>
+  <div class="body">
+    <div class="card" style="display:flex;gap:14px;align-items:center;padding:18px;border:1px solid var(--ln)"><span class="pbox" style="width:56px;height:56px;font-size:28px"><img src="/static/images/parkgo-logo.jpg" alt="logo"></span><div><small style="color:var(--mut)" data-t="chosen"></small><b id="bname" style="display:block;font-size:22px"></b><span class="free" id="bfree"></span></div></div>
+    <h4 data-t="when"></h4>
+    <div class="opts" id="opts"></div>
+    <h4 data-t="yourName"></h4>
+    <input class="n" id="cname" maxlength="80" autocomplete="name">
+    <h4 data-t="plate"></h4>
+    <div class="plate"><i>KZ</i><input class="f" id="plate" maxlength="20" placeholder="123 ABC 01" autocapitalize="characters"></div>
+    <div class="rows"><div><span data-t="parking"></span><b id="rloc"></b></div><div><span data-t="spot"></span><b id="rspot"></b></div><div><span data-t="cost"></span><b id="rprice"></b></div></div>
+    <p class="note" data-t="note"></p>
+    <p class="err" id="err"></p>
+  </div>
+  <div class="foot"><button class="cta" id="confirm" data-t="confirm"></button></div>
+</section>
+
+<!-- DONE -->
+<section class="scr done" id="done">
+  <div class="lang" style="position:absolute;right:16px;top:calc(14px + env(safe-area-inset-top))"></div>
+  <div class="done-inner">
+    <div class="ok"><svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+    <p class="sub" style="margin:20px 0 4px" data-t="confirmed"></p>
+    <h1 data-t="booked"></h1>
+    <div class="ticket card">
+      <div class="shead"><div><small id="dloc"></small><h2 id="dspot"></h2></div><span class="pbox"><img src="/static/images/parkgo-logo.jpg" alt="logo"></span></div>
+      <div class="until"><span data-t="until"></span><b id="duntil"></b></div>
+      <div class="qr" id="qr"></div>
+      <p style="text-align:center;font-size:12px;color:var(--mut);margin:8px 0 0" data-t="showQr"></p>
+    </div>
+    <div class="timer">⏱ <span id="dleft"></span></div>
+    <a class="cta" id="go" target="_blank" rel="noopener" style="text-decoration:none" data-t="go"></a>
+    <button class="cancel" id="cancel" data-t="cancel"></button>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="scr" id="faq">
+  <div class="bar"><button class="back" data-go="support" aria-label="Back">‹</button><h3 data-t="faq"></h3><div class="lang"></div></div>
+  <div class="body" id="faqList"></div>
+</section>
+
+<!-- TICKET -->
+<section class="scr" id="ticket">
+  <div class="bar"><button class="back" data-go="support" aria-label="Back">‹</button><h3 id="tTitle"></h3><div class="lang"></div></div>
+  <div class="body">
+    <p id="tHint" style="color:var(--mut);margin:4px 0 14px"></p>
+    <textarea class="ta" id="tmsg" maxlength="1000" data-ph="msgPh"></textarea>
+    <h4 data-t="contactLbl"></h4>
+    <input class="n" id="tcontact" maxlength="80" data-ph="contactPh">
+    <p class="err" id="terr"></p>
+  </div>
+  <div class="foot"><button class="cta" id="tsend" data-t="send"></button></div>
+</section>
+
+<!-- SUPPORT -->
+<section class="scr" id="support">
+  <div class="shead2">
+    <div class="lang" style="position:absolute;right:16px;top:calc(14px + env(safe-area-inset-top))"></div>
+    <span class="sicon"><img src="/static/images/support.png" alt="support"></span>
+    <h1 data-t="help"></h1>
+    <p data-t="helpSub"></p>
+  </div>
+  <div class="body">
+    <h4 style="margin-top:4px" data-t="helpH"></h4>
+    <ul class="list card">
+      <li><button class="li" data-sup="faq"><div><b data-t="faq"></b><span data-t="faqS"></span></div>›</button></li>
+      <li><button class="li" data-sup="booking"><div><b data-t="bIssue"></b><span data-t="bIssueS"></span></div>›</button></li>
+      <li><button class="li" data-sup="payment"><div><b data-t="pIssue"></b><span data-t="pIssueS"></span></div>›</button></li>
+    </ul>
+    <button class="contact" data-sup="chat" style="width:100%;text-align:left">
+      <div><b data-t="contact"></b><br><span style="font-size:13px;color:var(--mut)" data-t="contactS"></span></div>
+      <span class="on-badge">Online</span>
+    </button>
+    <p id="acct" style="text-align:center;color:var(--mut);font-size:14px;margin-top:18px"></p>
+  </div>
+  <nav class="nav" style="position:static">
+    <button data-go="home"><img class="ui-icon" src="/static/images/home.png" alt="home"><span data-t="map"></span></button>
+    <button class="on" data-go="support"><img class="ui-icon" src="/static/images/support.png" alt="support"><span data-t="support"></span></button>
+  </nav>
+</section>
+</div>
+
+<script>
+const SPOTS={{ spots|tojson }};
+const KEY="05f9709b-5abd-4a6f-8e4a-593ac1e4df3f";/* <-- вставьте сюда ключ 2GIS в кавычках */
+const COORD={{ lots|tojson }};/* [долгота, широта] парковок: задаются в app.py (LOTS) */
+const navUrl=l=>"https://www.google.com/maps/search/?api=1&query="+(COORD[l]?COORD[l][1]+","+COORD[l][0]:encodeURIComponent(l));
+const USER={{ (user.email if user else none)|tojson }},NAME={{ (user.full_name if user else "")|tojson }};
+let gmap=null,gmarks=[];
+
+function pinIcon(n,sel){
+  const c=n==0?"#dc4b4b":n==1?"#e8a62a":"#17964a";
+  const v=`<svg xmlns="http://www.w3.org/2000/svg" width="76" height="44" viewBox="0 0 76 44"><rect x="3" y="3" width="70" height="38" rx="19" fill="${c}" stroke="${sel?"#16211b":"#fff"}" stroke-width="${sel?4:3}"/><text x="22" y="28" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="700" fill="#ffffffcc">P</text><text x="47" y="30" font-family="Inter,Arial,sans-serif" font-size="21" font-weight="800" fill="#fff" text-anchor="middle">${n}</text></svg>`;
+  return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(v);
+}
+
+function initMap(){
+  if(!KEY)return;
+  const sc=document.createElement("script");
+  sc.src="https://mapgl.2gis.com/api/js/v1";
+  sc.onload=()=>{
+    $("#map").innerHTML='<div id="gl" style="position:absolute;inset:0;width:100%;height:100%"></div>';
+    const initZoom=window.innerWidth>=768?16.8:16.3;
+    gmap=new mapgl.Map("gl",{center:[71.4188,51.0912],zoom:initZoom,key:KEY,zoomControl:false});
+    window.addEventListener("resize",()=>{if(gmap&&gmap.invalidateSize)gmap.invalidateSize()});
+    render();
+  };
+  document.head.append(sc);
+}
+
+const POS={"Campus North":[32,26],"Campus South":[62,68],"Main Building":[46,48],"EXPO East":[78,42],"Mega Silk Way":[22,64],"AITU Gate":[24,42],"Botanical Garden":[66,18]};
+
+const T={
+  ru:{search:"Найти парковку рядом",map:"Карта",support:"Поддержка",all:"Все",bookTitle:"Забронировать место",chosen:"Выбранная парковка",when:"На какое время?",yourName:"Ваше имя",plate:"Номер автомобиля",parking:"Парковка",spot:"Место",cost:"Стоимость",note:"Оплата производится по фактическому времени парковки. Бронь можно отменить в любой момент.",confirm:"Подтвердить бронь",confirmed:"БРОНИРОВАНИЕ ПОДТВЕРЖДЕНО",booked:"Место забронировано",until:"Бронь до",showQr:"Покажите QR-код при въезде",go:"Поехать к парковке",cancel:"Отменить бронь",help:"Чем помочь?",helpSub:"Поддержка ParkGo работает каждый день",helpH:"Помощь",faq:"Частые вопросы",faqS:"Ответы о ParkGo",bIssue:"Проблема с бронью",bIssueS:"Изменить или отменить бронь",pIssue:"Проблема с оплатой",pIssueS:"Чеки и способы оплаты",contact:"Написать в поддержку",contactS:"Обычно отвечаем за 2 минуты",send:"Отправить",contactLbl:"Как с вами связаться (по желанию)",contactPh:"Телефон или email",msgPh:"Опишите проблему",sent:"Отправлено, мы скоро ответим",hintB:"Расскажите, что случилось с бронью.",hintP:"Расскажите, что не так с оплатой.",hintC:"Напишите нам, мы ответим в течение пары минут.",faqs:[["Как забронировать место?","Выберите парковку на карте, нажмите «Забронировать», укажите имя и номер автомобиля и подтвердите бронь."],["Как отменить бронь?","После брони откройте экран подтверждения и нажмите «Отменить бронь». Место сразу станет свободным."],["Когда я плачу?","Оплата идёт по фактическому времени парковки, бронь бесплатная."],["Что делать, если мест нет?","Выберите другую парковку на карте: красный маркер значит, что свободных мест нет."]],signedAs:"Вы вошли как",logout:"Выйти",login:"Войти",free:n=>`${n} свободных мест`,of:"из",total:"Всего мест",rate:"Стоимость",nextSpot:"Ваше место",book:"Забронировать",go2:"Поехать",h:"₸/час",now:"Сейчас",m30:"30 минут",h1:"1 час",h2:"2 часа",left:m=>`Бронь действует ещё ${m} минут`,full:"Свободных мест нет",fill:"Введите имя и номер автомобиля"},
+  en:{search:"Find parking nearby",map:"Map",support:"Support",all:"All",bookTitle:"Book a spot",chosen:"Selected parking",when:"For how long?",yourName:"Your name",plate:"Car plate number",parking:"Parking",spot:"Spot",cost:"Price",note:"Payment is based on actual parking time. You can cancel a booking at any time.",confirm:"Confirm booking",confirmed:"BOOKING CONFIRMED",booked:"Spot reserved",until:"Reserved until",showQr:"Show the QR code at the entrance",go:"Drive to parking",cancel:"Cancel booking",help:"How can we help?",helpSub:"ParkGo support is available every day",helpH:"Help",faq:"Frequently asked questions",faqS:"Answers about ParkGo",bIssue:"Booking issue",bIssueS:"Change or cancel a booking",pIssue:"Payment issue",pIssueS:"Receipts and payment methods",contact:"Contact support",contactS:"We usually reply in 2 minutes",send:"Send",contactLbl:"How to reach you (optional)",contactPh:"Phone or email",msgPh:"Describe the problem",sent:"Sent, we will reply soon",hintB:"Tell us what happened with your booking.",hintP:"Tell us what is wrong with the payment.",hintC:"Write to us, we usually reply in a couple of minutes.",faqs:[["How do I book a spot?","Choose a parking on the map, tap Book, enter your name and car plate, then confirm."],["How do I cancel a booking?","Open the confirmation screen after booking and tap Cancel booking. The spot becomes free right away."],["When do I pay?","You pay for the actual parking time. Booking itself is free."],["What if there are no spots?","Pick another parking on the map. A red marker means there are no free spots."]],signedAs:"Signed in as",logout:"Log out",login:"Log in",free:n=>`${n} spaces available`,of:"of",total:"Total spots",rate:"Price",nextSpot:"Your spot",book:"Book",go2:"Go",h:"₸/hour",now:"Now",m30:"30 minutes",h1:"1 hour",h2:"2 hours",left:m=>`Booking is valid for ${m} more minutes`,full:"No free spots",fill:"Enter your name and car plate"}
+};
+
+let tcat=null,lang=localStorage.getItem("pg-lang")||"ru",cur=null,mins=30,rid=null,filt="all",busy=false;
+const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s),t=k=>T[lang][k];
+const groups={};SPOTS.forEach(s=>(groups[s.loc]??=[]).push(s));
+const info=l=>{const a=groups[l],f=a.filter(s=>s.free);return{loc:l,all:a,free:f,n:f.length,price:a[0].price}};
+const cls=n=>n==0?"no":n==1?"mid":"ok";
+
+function show(id){
+  $$(".scr").forEach(s=>s.classList.toggle("on",s.id==id));
+  if(id=="home"&&gmap&&gmap.invalidateSize)setTimeout(()=>gmap.invalidateSize(),50);
+}
+
+function render(){
+  document.documentElement.lang=lang;
+  $$("[data-t]").forEach(e=>e.textContent=t(e.dataset.t));
+  $$("[data-ph]").forEach(e=>e.placeholder=t(e.dataset.ph));
+  $$(".lang").forEach(l=>{l.innerHTML=["ru","en"].map(x=>`<button class="${x==lang?"on":""}" data-l="${x}">${x.toUpperCase()}</button>`).join("")});
+  const locs=Object.keys(groups),q=$("#q").value.toLowerCase();
+  $("#chips").innerHTML=["all",...locs].map(l=>`<button class="chip ${filt==l?"on":""}" data-f="${l}">${l=="all"?t("all"):l}</button>`).join("");
+  $$(".pin").forEach(p=>p.remove());
+  const vis=locs.filter(l=>(filt=="all"||filt==l)&&l.toLowerCase().includes(q));
+  gmarks.forEach(m=>m.destroy());gmarks=[];
+  vis.forEach((l,i)=>{
+    const d=info(l),p=POS[l]||(COORD[l]?[(COORD[l][0]-71.4155)/0.0070*100,(51.0945-COORD[l][1])/0.0070*100]:[20+i*12,30+i*10]),c=`pin ${cls(d.n)} ${cur==l?"sel":""}`,h=`<small>P</small>${d.n}`;
+    if(gmap&&COORD[l]){
+      const m=new mapgl.Marker(gmap,{coordinates:COORD[l],icon:pinIcon(d.n,cur==l),size:[76,44],anchor:[38,22],zIndex:cur==l?2:1});
+      m.on("click",()=>openSheet(l));
+      gmarks.push(m);
+    } else if(!gmap){
+      const b=document.createElement("button");
+      b.className=c;b.style.left=p[0]+"%";b.style.top=p[1]+"%";b.innerHTML=h;
+      b.onclick=()=>openSheet(l);
+      $("#map").append(b);
+    }
+  });
+  const pk=cur&&vis.includes(cur)?cur:vis[0];
+  $("#peek").style.display=pk?"flex":"none";
+  if(pk){
+    const d=info(pk);
+    $("#peek").innerHTML=`<span class="pbox"><img src="/static/images/parkgo-logo.jpg" alt="logo"></span><div><b>${pk}</b><span class="free" style="${d.n?"":"color:var(--rd)!important"}">● ${d.n?t("free")(d.n):t("full")}</span></div><span style="margin-left:auto;font-size:22px">›</span>`;
+    $("#peek").onclick=()=>openSheet(pk);
+  }
+  if(cur)fillBook();
+  $("#faqList").innerHTML=T[lang].faqs.map(([q,a])=>`<details class="card qa"><summary>${q}</summary><p>${a}</p></details>`).join("");
+  if(tcat)setTicket();
+  $("#acct").innerHTML=USER?`${t("signedAs")} <b></b> · <a href="/logout" style="color:var(--g);font-weight:700">${t("logout")}</a>`:`<a href="/login" style="color:var(--g);font-weight:700">${t("login")}</a>`;
+  if(USER)$("#acct b").textContent=USER;
+}
+
+function openSheet(l){
+  cur=l;
+  if(gmap&&COORD[l])gmap.setCenter(COORD[l]);
+  const d=info(l);
+  $("#sheet").innerHTML=`<div class="grab"></div><div class="shead"><div><div class="sub">${d.loc.toUpperCase()}</div><h2>${l}</h2></div><span class="pbox" style="width:56px;height:56px;font-size:28px"><img src="/static/images/parkgo-logo.jpg" alt="logo"></span></div>
+  <span class="pill">● ${d.n?t("free")(d.n):t("full")}</span><span style="color:var(--mut)">${t("of")} ${d.all.length}</span>
+  <div class="grid"><div class="tile"><span>${t("total")}</span><b>${d.all.length}</b></div><div class="tile"><span>${t("rate")}</span><b>${d.price} ${t("h")}</b></div></div>
+  <div class="two"><button class="cta" id="sbook" ${d.n?"":"disabled"}>${t("book")}</button><a class="cta dark" target="_blank" rel="noopener" style="text-decoration:none" href="${navUrl(l)}">${t("go2")}</a></div>`;
+  $("#sheet").classList.add("on");$("#shade").classList.add("on");
+  $("#sbook").onclick=()=>{
+    if(!USER){location.href="/login?next=/";return}
+    closeSheet();fillBook();
+    if(!$("#cname").value)$("#cname").value=NAME||"";
+    show("book");
+  };
+  render();
+}
+
+function closeSheet(){$("#sheet").classList.remove("on");$("#shade").classList.remove("on")}
+
+function fillBook(){
+  if(!cur)return;
+  const d=info(cur);
+  $("#bname").textContent=cur;$("#bfree").textContent="● "+(d.n?t("free")(d.n):t("full"));
+  $("#rloc").textContent=cur;$("#rspot").textContent=d.free[0]?d.free[0].name:"—";$("#rprice").textContent=d.price+" "+t("h");
+  $("#opts").innerHTML=[[15,"now"],[30,"m30"],[60,"h1"],[120,"h2"]].map(([m,k])=>`<button class="opt ${m==mins?"on":""}" data-m="${m}">${t(k)}</button>`).join("");
+}
+
+function qr(seed){
+  let x=seed*2654435761>>>0,h="";
+  for(let i=0;i<81;i++){x=(x*1664525+1013904223)>>>0;h+=`<i class="${x>>>28<8?"k":""}"></i>`}
+  $("#qr").innerHTML=h;
+}
+
+document.addEventListener("click",e=>{
+  const sp=e.target.closest("[data-sup]");
+  if(sp){const k=sp.dataset.sup;if(k=="faq")show("faq");else{tcat=k;setTicket();$("#terr").textContent="";show("ticket")}return}
+  const g=e.target.closest("[data-go]");if(g){show(g.dataset.go);return}
+  const l=e.target.closest("[data-l]");if(l){lang=l.dataset.l;localStorage.setItem("pg-lang",lang);render();if(cur&&$("#sheet").classList.contains("on"))openSheet(cur);return}
+  const f=e.target.closest("[data-f]");if(f){filt=f.dataset.f;if(f.dataset.f!="all"&&COORD[f.dataset.f]){cur=f.dataset.f;if(gmap)gmap.setCenter(COORD[cur])}render();return}
+  const o=e.target.closest("[data-m]");if(o){mins=+o.dataset.m;fillBook()}
+});
+
+$("#zin").onclick=()=>{if(gmap)gmap.setZoom(gmap.getZoom()+1)};
+$("#zout").onclick=()=>{if(gmap)gmap.setZoom(gmap.getZoom()-1)};
+$("#zloc").onclick=()=>{if(gmap)gmap.setCenter([71.4188,51.0912])};
+
+$("#shade").onclick=closeSheet;$("#q").oninput=render;$("#bback").onclick=()=>show("home");
+
+$("#confirm").onclick=async()=>{
+  if(busy)return;
+  const d=info(cur),sp=d.free[0],name=$("#cname").value.trim(),car=$("#plate").value.trim();
+  if(!sp){$("#err").textContent=t("full");return}
+  if(!name||!car){$("#err").textContent=t("fill");return}
+  busy=true;$("#err").textContent="";
+  try{
+    const fd=new URLSearchParams({customer_name:name,car_number:car}),
+          r=await fetch("/book/"+sp.id,{method:"POST",headers:{"X-Requested-With":"fetch"},body:fd});
+    if(r.status==401){location.href="/login?next=/";return}
+    if(!r.ok){$("#err").textContent=await r.text();return}
+    rid=(await r.json()).reservation_id;sp.free=false;
+    const u=new Date(Date.now()+mins*60000);
+    $("#dloc").textContent=cur;$("#dspot").textContent=(lang=="ru"?"Место ":"Spot ")+sp.name;
+    $("#duntil").textContent=u.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+    $("#dleft").textContent=t("left")(mins);$("#go").href=navUrl(cur);
+    qr(rid);render();show("done");
+  }catch(e){$("#err").textContent="Network error"}finally{busy=false}
+};
+
+$("#cancel").onclick=async()=>{if(!rid)return;const r=await fetch("/cancel/"+rid,{method:"POST"});if(r.ok){location.reload()}};
+
+function setTicket(){
+  const m={booking:["bIssue","hintB"],payment:["pIssue","hintP"],chat:["contact","hintC"]}[tcat];
+  $("#tTitle").textContent=t(m[0]);$("#tHint").textContent=t(m[1]);
+}
+
+$("#tsend").onclick=async()=>{
+  const msg=$("#tmsg").value.trim(),er=$("#terr");er.className="err";
+  if(!msg){er.textContent=t("msgPh");return}
+  try{
+    const r=await fetch("/support",{method:"POST",body:new URLSearchParams({category:tcat,message:msg,contact:$("#tcontact").value})});
+    if(!r.ok){er.textContent=await r.text();return}
+    er.className="err okmsg";er.textContent=t("sent");$("#tmsg").value="";
+    setTimeout(()=>{er.textContent="";show("support")},1400);
+  }catch(e){er.textContent="Network error"}
+};
+
+let last=JSON.stringify(SPOTS);
+async function poll(){
+  if(document.hidden)return;
+  try{
+    const r=await fetch("/api/spots",{cache:"no-store"});if(!r.ok)return;
+    const d=await r.json(),j=JSON.stringify(d);if(j==last)return;last=j;
+    SPOTS.length=0;SPOTS.push(...d);for(const k in groups)delete groups[k];
+    SPOTS.forEach(s=>(groups[s.loc]??=[]).push(s));
+    render();if(cur&&$("#sheet").classList.contains("on"))openSheet(cur);
+  }catch(e){}
+}
+setInterval(poll,4000);document.addEventListener("visibilitychange",poll);
+render();initMap();
+</script>
+</body>
+</html>
